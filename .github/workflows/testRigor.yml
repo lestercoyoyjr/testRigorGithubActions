@@ -52,7 +52,8 @@ jobs:
 
           echo $combined_json
           
-          curl -X POST \
+          # Make the POST request with auth-token and test-id from secrets
+          curl -X POST --http1.1 \
             -H 'Content-type: application/json' \
             -H "auth-token: ${AUTH_TOKEN}" \
             --data "${combined_json}" \
@@ -60,13 +61,17 @@ jobs:
           
           sleep 10
           
+          # Loop to check the test status
           while true
           do
             echo " "
             echo "==================================="
             echo " Checking TestRigor retest"
             echo "==================================="
-            response=$(curl -i -o - -s -X GET "https://api.testrigor.com/api/v1/apps/${TEST_ID}/status" -H "auth-token: ${AUTH_TOKEN}" -H 'Accept: application/json')
+            response=$(curl -i -o - -s -X GET --http1.1 \
+              "https://api.testrigor.com/api/v1/apps/${TEST_ID}/status" \
+              -H "auth-token: ${AUTH_TOKEN}" \
+              -H 'Accept: application/json')
             code=$(echo "$response" | grep HTTP |  awk '{print $2}')
             body=$(echo "$response" | grep status)
             echo "Status code: " $code
