@@ -1,0 +1,96 @@
+# This is a basic workflow to help you get started with Actions
+
+name: testRigor
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches:
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  api_call_job:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: convert test cases to json
+        id: convert_test_cases_to_json
+        run: |
+          # Path to the folder containing YAML files
+          yaml_folder="test-cases"
+          
+          # Initialize an empty JSON array
+          combined_json='{
+            "baselineMutations": []
+          }'
+          # Loop through each YAML file in the folder
+          for yaml_file in "$yaml_folder"/*.yaml; do
+                  # Convert YAML to JSON using yq
+              json_content=$(yq eval -o=json "$yaml_file")
+              # Create description name from yml file
+              file_name=$(basename "$yaml_file")
+              file_name="${file_name%.yaml}"
+
+              # Append description name to test case json object
+              json_content=$(jq --arg name "$file_name" '. + {description: $name}' <<<"$json_content")
+              # Add json_content to the array in the JSON object using jq
+              combined_json=$(jq --argjson content "$json_content" '.baselineMutations += [$content]' <<< "$combined_json")
+          done
+
+          echo $combined_json
+          
+          curl -X POST \
+            -H 'Content-type: application/json' \
+            -H 'auth-token: {$auth-token}' \
+            --data "${combined_json}" \
+            https://api.testrigor.com/api/v1/apps/{$test-id}/retest
+          
+          sleep 10
+          
+          while true
+          do
+            echo " "
+            echo "==================================="
+            echo " Checking TestRigor retest"
+            echo "==================================="
+            response=$(curl -i -o - -s -X GET 'https://api.testrigor.com/api/v1/apps/{$test-id}/status' -H 'auth-token: {$auth-token}' -H 'Accept: application/json')
+            code=$(echo "$response" | grep HTTP |  awk '{print $2}')
+            body=$(echo "$response" | grep status)
+            echo "Status code: " $code
+            echo "Response: " $body
+            case $code in
+              4*|5*)
+                # 400 or 500 errors
+                echo "Error calling API"
+                exit 1
+                ;;
+              200)
+                # 200: successfully finished
+                echo "Test finished successfully"
+                exit 0
+                ;;
+              227|228)
+                # 227: New - 228: In progress
+                echo "Test is not finished yet"
+                ;;
+              230)
+                # 230: Failed
+                echo "Test finished but failed"
+                exit 1
+                ;;
+              *)
+                echo "Unknown status"
+                exit 1
+            esac
+            sleep 10
+          done
