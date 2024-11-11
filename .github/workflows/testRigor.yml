@@ -23,11 +23,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Convert test cases to JSON
+      - name: convert test cases to json
         id: convert_test_cases_to_json
-        env:
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-          TEST_ID: ${{ secrets.TEST_ID }}
         run: |
           # Path to the folder containing YAML files
           yaml_folder="test-cases"
@@ -38,7 +35,7 @@ jobs:
           }'
           # Loop through each YAML file in the folder
           for yaml_file in "$yaml_folder"/*.yaml; do
-              # Convert YAML to JSON using yq
+                  # Convert YAML to JSON using yq
               json_content=$(yq eval -o=json "$yaml_file")
               # Create description name from yml file
               file_name=$(basename "$yaml_file")
@@ -52,26 +49,21 @@ jobs:
 
           echo $combined_json
           
-          # Make the POST request with auth-token and test-id from secrets
-          curl -X POST --http1.1 \
+          curl -X POST \
             -H 'Content-type: application/json' \
-            -H "auth-token: ${AUTH_TOKEN}" \
+            -H 'auth-token: {$auth-token}' \
             --data "${combined_json}" \
-            https://api.testrigor.com/api/v1/apps/${TEST_ID}/retest
+            https://api.testrigor.com/api/v1/apps/{$testId}}/retest
           
           sleep 10
           
-          # Loop to check the test status
           while true
           do
             echo " "
             echo "==================================="
             echo " Checking TestRigor retest"
             echo "==================================="
-            response=$(curl -i -o - -s -X GET --http1.1 \
-              "https://api.testrigor.com/api/v1/apps/${TEST_ID}/status" \
-              -H "auth-token: ${AUTH_TOKEN}" \
-              -H 'Accept: application/json')
+            response=$(curl -i -o - -s -X GET 'https://api.testrigor.com/api/v1/apps/{$testId}/status' -H 'auth-token: {$auth-token}}' -H 'Accept: application/json')
             code=$(echo "$response" | grep HTTP |  awk '{print $2}')
             body=$(echo "$response" | grep status)
             echo "Status code: " $code
