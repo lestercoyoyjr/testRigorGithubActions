@@ -1,0 +1,3 @@
+customSteps: |
+  check page contains "Google"
+labels: []
