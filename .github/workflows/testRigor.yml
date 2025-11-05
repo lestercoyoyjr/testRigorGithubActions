@@ -51,9 +51,9 @@ jobs:
           
           curl -X POST \
             -H 'Content-type: application/json' \
-            -H 'auth-token: a9a95530-c0a1-4c62-97a7-0a817d4c8631' \
+            -H 'auth-token: {AUTH-TOKEN}' \
             --data "${combined_json}" \
-            https://api.testrigor.com/api/v1/apps/8Lr7ERzJ4STtd3sWQ/retest
+            https://api.testrigor.com/api/v1/apps/{ID_SUITE}/retest
           
           sleep 10
           
@@ -63,7 +63,7 @@ jobs:
             echo "==================================="
             echo " Checking TestRigor retest"
             echo "==================================="
-            response=$(curl -i -o - -s -X GET 'https://api.testrigor.com/api/v1/apps/8Lr7ERzJ4STtd3sWQ/status' -H 'auth-token: a9a95530-c0a1-4c62-97a7-0a817d4c8631' -H 'Accept: application/json')
+            response=$(curl -i -o - -s -X GET 'https://api.testrigor.com/api/v1/apps/{ID_SUITE}status' -H 'auth-token: {AUTH-TOKEN}' -H 'Accept: application/json')
             code=$(echo "$response" | grep HTTP |  awk '{print $2}')
             body=$(echo "$response" | grep status)
             echo "Status code: " $code
